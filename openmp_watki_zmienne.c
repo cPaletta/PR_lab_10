@@ -2,6 +2,9 @@
 #include<stdio.h>
 #include<omp.h>
 
+int f_threadprivate;
+#pragma omp threadprivate(f_threadprivate)
+
 int main(){
   
 #ifdef   _OPENMP
@@ -23,15 +26,24 @@ int main(){
   printf("\tc_firstprivate \t= %d\n", c_firstprivate);
   printf("\te_atomic \t= %d\n", e_atomic);
     
-  
+//ustalenie liczby watkow
+omp_set_num_threads(5);
+
 #pragma omp parallel default(none) shared(a_shared, e_atomic) private(b_private) firstprivate(c_firstprivate )
   {
     int i;
     int d_local_private;
     d_local_private = a_shared + c_firstprivate;
+
+    f_threadprivate = omp_get_thread_num();
     
-    for(i=0;i<10;i++){
-      a_shared ++; 
+    #pragma omp barrier
+
+    #pragma omp critical 
+    {
+      for(int i=0;i<10;i++){
+        a_shared ++; 
+      }
     }
 
     for(i=0;i<10;i++){
@@ -39,9 +51,12 @@ int main(){
     }
 
     for(i=0;i<10;i++){
+      #pragma omp atomic
       e_atomic+=omp_get_thread_num();
     }
-    
+    #pragma omp barrier    
+
+    #pragma omp critical
     {
       
       printf("\nw obszarze równoległym: aktualna liczba watkow %d, moj ID %d\n",
@@ -80,6 +95,13 @@ int main(){
 /*         } */
     
   }
+
+  // Second parallel region
+#pragma omp parallel default(none) shared(a_shared, e_atomic) private(b_private) firstprivate(c_firstprivate)
+{
+  printf("\nDrugi obszar równoległy: aktualna liczba watkow %d, moj ID %d, f_threadprivate = %d\n",
+         omp_get_num_threads(), omp_get_thread_num(), f_threadprivate);
+}
   
   printf("po zakonczeniu obszaru rownoleglego:\n");
   printf("\ta_shared \t= %d\n", a_shared);
