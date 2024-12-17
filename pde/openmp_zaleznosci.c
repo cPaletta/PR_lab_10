@@ -1,8 +1,6 @@
 // Kompilacja:
 // gcc -fopenmp -o openmp_zaleznosci openmp_zaleznosci.c -lm
 
-//Może na wykładzie bedzie info czemu trzeba rozbić na 2 pętle
-
 #include<stdlib.h>
 #include<stdio.h>
 #include<omp.h>
@@ -22,8 +20,8 @@ int main(){
 
   double t1 = omp_get_wtime();
   for(i=0; i<N; i++){
-    A[i] += A[i+2] + sin(B[i]);
-  }
+    A[i] += A[i+2] + sin(B[i]); //RAW A[i] jest modyfikowane w bieżącej iteracji, a A[i+2] jest odczytywane
+  } //WAR A[i+2] jest zapisywane w iteracji i+2 ale odczytywany w iteracji i
   t1 = omp_get_wtime() - t1;
 
   suma = 0.0;
@@ -63,7 +61,7 @@ int main(){
   // for(i=0;i<N+2;i++) suma+=C[i];
   
   
-  //to ma dobry wynik ale czas taki jak w sekwencyjnym
+  //to ma dobry wynik ale czas taki jak w sekwencyjnym, i tak ma chyba być, żeby uniknąć błędów read after write
   double* C = malloc((N + 2) * sizeof(double));
   t1 = omp_get_wtime();
 
