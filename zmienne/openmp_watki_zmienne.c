@@ -2,7 +2,7 @@
 #include<stdio.h>
 #include<omp.h>
 
-int f_threadprivate;
+int f_threadprivate =0;
 #pragma omp threadprivate(f_threadprivate)
 
 int main(){
@@ -26,14 +26,14 @@ int main(){
   printf("\tc_firstprivate \t= %d\n", c_firstprivate);
   printf("\te_atomic \t= %d\n", e_atomic);
     
-//ustalenie liczby watkow
+
 omp_set_num_threads(5);
 
 #pragma omp parallel default(none) shared(a_shared, e_atomic) private(b_private) firstprivate(c_firstprivate )
   {
     int i;
     int d_local_private;
-    d_local_private = a_shared + c_firstprivate;
+    d_local_private = a_shared + c_firstprivate; //WAR, a jest modyfikowana w 45;
 
     f_threadprivate = omp_get_thread_num();
     
@@ -41,9 +41,10 @@ omp_set_num_threads(5);
 
     #pragma omp critical 
     {
-      for(int i=0;i<10;i++){
-        a_shared ++; 
-      }
+      for(int i=0;i<10;i++){  //RAW, zapisujemy w iteracji i, a odczytujemy w i+1
+        a_shared=a_shared+1; //WAR, odczytujemy i zapisujemy powiększone
+      }                      //WAR w 36
+    //WAW
     }
 
     for(i=0;i<10;i++){
@@ -52,7 +53,7 @@ omp_set_num_threads(5);
 
     for(i=0;i<10;i++){
       #pragma omp atomic
-      e_atomic+=omp_get_thread_num();
+      e_atomic+=omp_get_thread_num(); //WAR, odczytujemy i zapisujemy powiększone
     }
     #pragma omp barrier    
 
@@ -62,11 +63,11 @@ omp_set_num_threads(5);
       printf("\nw obszarze równoległym: aktualna liczba watkow %d, moj ID %d\n",
 	     omp_get_num_threads(), omp_get_thread_num());
       
-      printf("\ta_shared \t= %d\n", a_shared);
+      printf("\ta_shared \t= %d\n", a_shared);  //RAW, a jest modyfikowana w 45 
       printf("\tb_private \t= %d\n", b_private);
-      printf("\tc_firstprivate \t= %d\n", c_firstprivate);
-      printf("\td_local_private = %d\n", d_local_private);
-      printf("\te_atomic \t= %d\n", e_atomic);
+      printf("\tc_firstprivate \t= %d\n", c_firstprivate);  
+      printf("\td_local_private = %d\n", d_local_private);  
+      printf("\te_atomic \t= %d\n", e_atomic);  //RAW, e jest modyfikowane w 56
       
     }
     
@@ -96,11 +97,11 @@ omp_set_num_threads(5);
     
   }
 
-  // Second parallel region
-#pragma omp parallel default(none) shared(a_shared, e_atomic) private(b_private) firstprivate(c_firstprivate)
+
+#pragma omp parallel default(none)
 {
   printf("\nDrugi obszar równoległy: aktualna liczba watkow %d, moj ID %d, f_threadprivate = %d\n",
-         omp_get_num_threads(), omp_get_thread_num(), f_threadprivate);
+         omp_get_num_threads(), omp_get_thread_num(), f_threadprivate); 
 }
   
   printf("po zakonczeniu obszaru rownoleglego:\n");
